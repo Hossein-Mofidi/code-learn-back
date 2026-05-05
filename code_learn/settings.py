@@ -24,12 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-b!rsaud-x0tqktflbozl&mt9w@a3u4b&5r+&wc_eu0(a3+%l^o'
+SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -45,25 +45,24 @@ INSTALLED_APPS = [
     # 3rd-party
     'rest_framework',
     'phone_verify',
-    'oauth2_provider',
+    'corsheaders',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
+    'rest_framework_simplejwt',
 
     # Local
     'users.apps.UsersConfig',
-]
-
-AUTHENTICATION_BACKENDS = [
-    'oauth2_provider.backends.OAuth2Backend',
-    'django.contrib.auth.backends.ModelBackend',
+    'courses.apps.CoursesConfig'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'oauth2_provider.middleware.OAuth2TokenMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -91,10 +90,7 @@ WSGI_APPLICATION = 'code_learn.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': env.dj_db_url('DATABASE_URL')
 }
 
 
@@ -158,12 +154,24 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-OAUTH2_PROVIDER = {
-    'ACCESS_TOKEN_EXPIRE_SECONDS': 36000,
-    'REFRESH_TOKEN_EXPIRE_SECONDS': 2592000,
-    'ROTATE_REFRESH_TOKEN': True,
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'http://localhost:8000',
+]
+
+CSRF_TRUSTED_ORIGINS = ['http://localhost:5173']
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Code Learn API',
+    'DESCRIPTION': 'Code Learn is a website for learn about computer programming',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
 }
