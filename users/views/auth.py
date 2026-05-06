@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from phone_verify.api import VerificationViewSet
-from phone_verify.serializers import SMSVerificationSerializer
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -10,31 +9,30 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from users.openapi import sms_verification_schema, verify_sms_schema, token_refresh_schema
+from users.openapi import token_refresh_schema, logout_schema, sms_verification_schema_view
+from users.serializers import CustomSMSVerificationSerializer
 from users.services import get_tokens_for_user, set_refresh_cookie
 
 
-@sms_verification_schema
+@sms_verification_schema_view
 class SMSVerificationViewSet(VerificationViewSet):
 
     @action(
         detail=False,
         methods=["POST"],
-        serializer_class=SMSVerificationSerializer,
+        serializer_class=CustomSMSVerificationSerializer,
     )
-    @verify_sms_schema
     def verify(self, request):
-        serializer = SMSVerificationSerializer(data=request.data)
+        serializer = CustomSMSVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        phone_number = serializer.validated_data["phone_number"]
+        phone_number = serializer.validated_data['phone_number']
+        role = serializer.validated_data['role']
 
         # create or get user
         user, created = get_user_model().objects.get_or_create(
             phone_number=phone_number,
-            defaults={
-                'role': 'student',
-            }
+            role=role,
         )
 
         # create token
@@ -73,6 +71,7 @@ class CustomTokenRefreshView(TokenRefreshView):
         return response
 
 
+@logout_schema
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
