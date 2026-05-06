@@ -33,6 +33,7 @@ class SMSVerificationViewSet(VerificationViewSet):
         user, created = get_user_model().objects.get_or_create(
             phone_number=phone_number,
             role=role,
+            username=phone_number,
         )
 
         # create token

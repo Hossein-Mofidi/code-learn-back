@@ -138,7 +138,7 @@ MEDIA_URL = '/media/'
 AUTH_USER_MODEL = 'users.User'
 
 PHONE_VERIFICATION = {
-    'BACKEND': 'code_learn.sms_backend.SMSSandboxBackend',
+    'BACKEND': 'code_learn.sms_backend.SMSSandboxBackend' if DEBUG else 'code_learn.sms_backend.SMSBackend',
     'OPTIONS': {
         'KEY': env.str('SMS_API_KEY'),
         'SANDBOX_KEY': env.str('SMS_SANDBOX_KEY'),
@@ -150,7 +150,7 @@ PHONE_VERIFICATION = {
     'MAX_FAILED_ATTEMPTS': 5,
     'MESSAGE': 'کد ورود به ' + '{app}\nCode: {security_code}',
     'APP_NAME': 'کدلرن',
-    'SECURITY_CODE_EXPIRATION_SECONDS': 3600,
+    'SECURITY_CODE_EXPIRATION_SECONDS': 120,
     'VERIFY_SECURITY_CODE_ONLY_ONCE': True,
 }
 
@@ -160,6 +160,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
