@@ -342,3 +342,189 @@ logout_schema = extend_schema(
     },
     tags=['Authentication'],
 )
+
+# ========== Schema for ProfileView ==========
+profile_schema_view = extend_schema_view(
+    get=extend_schema(
+        summary="Get current user profile",
+        description="""
+        **Description:**  
+        This endpoint returns the profile information of the currently logged-in user.  
+        Sensitive fields such as `password`, `is_staff`, `is_superuser`, `is_active`, `groups`, and `user_permissions` are excluded.
+
+        **Security Notes:**  
+        - Only authenticated users (`IsAuthenticated`) can access this endpoint.
+        - No need to send `id` in the URL; the current user is automatically selected.
+        """,
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                description="User profile retrieved successfully",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer", "example": 1},
+                        "username": {"type": "string", "example": "john_doe"},
+                        "email": {"type": "string", "example": "john@example.com"},
+                        "first_name": {"type": "string", "example": "John"},
+                        "last_name": {"type": "string", "example": "Doe"},
+                        "birth_date": {"type": "string", "format": "date", "example": "1990-01-01"},
+                        "sex": {"type": "string", "enum": ["F", "M"], "example": "M"},
+                        "role": {"type": "string", "enum": ["student", "instructor", "support", "admin"]},
+                        "avatar": {"type": "string", "format": "uri", "example": "/media/users/1/avatars/photo.jpg"},
+                        "bio": {"type": "string", "example": "I am a developer"},
+                        "phone_number": {"type": "string", "example": "+989123456789"},
+                        "national_code": {"type": "string", "example": "1234567890"},
+                    }
+                }
+            ),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="Authentication required"),
+        },
+        tags=["User Profile"],
+    ),
+    put=extend_schema(
+        summary="Fully update user profile",
+        description="Updates all editable profile fields. Fields `id`, `username`, `email`, and `role` are read-only.",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "first_name": {"type": "string"},
+                    "last_name": {"type": "string"},
+                    "birth_date": {"type": "string", "format": "date"},
+                    "sex": {"type": "string", "enum": ["F", "M"]},
+                    "avatar": {"type": "string", "format": "binary"},
+                    "bio": {"type": "string"},
+                    "national_code": {"type": "string"},
+                },
+                "required": ["first_name", "last_name"],
+            }
+        },
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(description="Profile updated successfully"),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(description="Invalid data provided"),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="Authentication required"),
+        },
+        tags=["User Profile"],
+    ),
+    patch=extend_schema(
+        summary="Partially update user profile",
+        description="Updates some of the profile fields (PATCH method).",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "first_name": {"type": "string"},
+                    "last_name": {"type": "string"},
+                    "birth_date": {"type": "string", "format": "date"},
+                    "sex": {"type": "string", "enum": ["F", "M"]},
+                    "avatar": {"type": "string", "format": "binary"},
+                    "bio": {"type": "string"},
+                    "national_code": {"type": "string"},
+                },
+            }
+        },
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(description="Profile updated successfully"),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(description="Invalid data provided"),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="Authentication required"),
+        },
+        tags=["User Profile"],
+    ),
+)
+
+
+# ========== Schema for InstructorVerificationView ==========
+instructor_verification_schema_view = extend_schema_view(
+    get=extend_schema(
+        summary="Get instructor verification status and documents",
+        description="""
+        **Description:**  
+        This endpoint returns the list of verification requests for the current instructor (usually only one record due to OneToOneField).  
+        Status can be `P` (pending), `A` (approved), or `R` (rejected).
+
+        **Permissions:**  
+        - User must have `instructor` role (via `IsInstructor`).
+        - User profile must be complete (`IsCompleteProfileOrReadOnly` for read access).
+        """,
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                description="List of verification requests",
+                response={
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer"},
+                            "user": {"type": "integer"},
+                            "national_card": {"type": "string", "format": "uri"},
+                            "identity_card": {"type": "string", "format": "uri"},
+                            "resume": {"type": "string", "format": "uri"},
+                            "status": {"type": "string", "enum": ["P", "A", "R"]},
+                            "reject_reason": {"type": "string", "nullable": True},
+                            "submitted_at": {"type": "string", "format": "date-time"},
+                            "reviewed_at": {"type": "string", "format": "date-time"},
+                        }
+                    }
+                }
+            ),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="Authentication required"),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="Access denied (instructor role required or profile incomplete)"),
+        },
+        tags=["Instructor Verification"],
+    ),
+    post=extend_schema(
+        summary="Submit new instructor verification request",
+        description="""
+        **Request Requirements:**  
+        - User must have `instructor` role.  
+        - User profile must be complete (all required fields filled).  
+        - No existing request with `pending` or `approved` status should exist.  
+
+        **Fields to submit:**  
+        - `national_card` (national card image)  
+        - `identity_card` (identity card image)  
+        - `resume` (resume file)  
+
+        After submission, the `status` will be set to `P` (pending) and the admin will review it.
+        """,
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "national_card": {"type": "string", "format": "binary", "description": "National card image"},
+                    "identity_card": {"type": "string", "format": "binary", "description": "Identity card image"},
+                    "resume": {"type": "string", "format": "binary", "description": "Resume file"},
+                },
+                "required": ["national_card", "identity_card", "resume"],
+            }
+        },
+        responses={
+            status.HTTP_201_CREATED: OpenApiResponse(
+                description="Verification request submitted successfully",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "status": {"type": "string", "example": "P"},
+                        "submitted_at": {"type": "string", "format": "date-time"},
+                    }
+                }
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(description="Invalid data or missing files"),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="Profile incomplete or already has an approved request"),
+            status.HTTP_409_CONFLICT: OpenApiResponse(description="A pending verification request already exists"),
+        },
+        tags=["Instructor Verification"],
+        examples=[
+            OpenApiExample(
+                "Successful request example",
+                value={
+                    "national_card": "(binary file)",
+                    "identity_card": "(binary file)",
+                    "resume": "(binary file)",
+                },
+                request_only=True,
+            ),
+        ],
+    ),
+)

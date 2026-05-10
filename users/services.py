@@ -1,7 +1,7 @@
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from code_learn.settings import DEBUG
+from code_learn import settings
 
 
 def get_tokens_for_user(user):
@@ -19,7 +19,7 @@ def set_refresh_cookie(response, refresh_token):
     response.set_cookie(
         key='refresh_token',
         value=str(refresh_token),
-        secure=not DEBUG,
+        secure=not settings.DEBUG,
         httponly=True,
         expires=refresh_token.lifetime,
         samesite='Strict',

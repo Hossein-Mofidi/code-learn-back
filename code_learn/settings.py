@@ -38,8 +38,9 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 # Application definition
 
 INSTALLED_APPS = [
-    'unfold',
+    'django_daisy',
     'django.contrib.admin',
+    'django.contrib.humanize',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -70,7 +71,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django.middleware.locale.LocaleMiddleware',
 ]
 
 ROOT_URLCONF = 'code_learn.urls'
@@ -201,11 +201,26 @@ SPECTACULAR_SETTINGS = {
     'REDOC_DIST': 'SIDECAR',
 }
 
-UNFOLD = {
-    'SITE_TITLE': _('Code Learn'),
-    'SITE_HEADER': _('Code Learn'),
-    'SHOW_LANGUAGES': True,
-    'STYLES': [
-        lambda request: static('css/style.css'),
-    ],
+DAISY_SETTINGS = {
+    'SITE TITLE': 'Code Learn',
+    'SITE HEADER': 'Administrator',
+    'INDEX_TITLE': 'Hi, welcome to your dashboard',
+    'APPS_REORDER': {
+        'auth': {
+            'app': 'Authentication',
+            'icon': 'fa-solid fa-person-military-pointing',
+        },
+        'phone_verify': {
+            'app': 'SMS Verification',
+            'icon': 'fa-solid fa-phone',
+        },
+        'users': {
+            'app': 'Users',
+            'icon': 'fa-solid fa-user',
+        },
+        'token_blacklist': {
+            'app': 'TokenBlacklist',
+            'icon': 'fa-solid fa-list',
+        }
+    },
 }
