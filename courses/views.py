@@ -1,20 +1,14 @@
-from drf_spectacular.utils import extend_schema
-from rest_framework import viewsets
+from rest_framework import generics
 
 from courses.models import Course
-from courses.permissions import IsInstructorOrReadOnly
+
+from courses.permissions import IsInstructor
 from courses.serializers import CourseSerializer
 
 
-@extend_schema(
-    tags=['Courses'],
-    summary='Operation on courses',
-)
-class CourseViewSet(viewsets.ModelViewSet):
-    queryset = Course.objects.all()
+class CourseListCreateView(generics.ListCreateAPIView):
     serializer_class = CourseSerializer
-    permission_classes = [IsInstructorOrReadOnly]
+    permission_classes = [IsInstructor]
 
-
-    def create(self, request, *args, **kwargs):
-        pass
+    def get_queryset(self):
+        return Course.objects.filter(instructor__id=self.request.user.id)

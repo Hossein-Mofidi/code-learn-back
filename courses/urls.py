@@ -1,9 +1,7 @@
-from rest_framework.routers import SimpleRouter
+from django.urls import path
 
-from courses.views import CourseViewSet
+from courses.views import CourseListCreateView
 
-
-router = SimpleRouter()
-router.register('', CourseViewSet, basename='course')
-
-urlpatterns = router.urls
+urlpatterns = [
+    path('', CourseListCreateView.as_view(), name='courses'),
+]
