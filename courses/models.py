@@ -26,6 +26,7 @@ def course_field_path(instance, filename):
 class Course(models.Model):
     STATUS_CHOICES = (
         ('DR', 'draft'),
+        ('PE', 'pending'),
         ('PU', 'published'),
         ('AR', 'archived'),
     )
