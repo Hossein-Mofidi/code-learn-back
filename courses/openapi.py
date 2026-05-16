@@ -6,10 +6,9 @@ from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiParameter,
 )
-from drf_spectacular.types import OpenApiTypes
 from rest_framework import status
 
-from .serializers import CategorySerializer, CourseInstructorSerializer
+from .serializers import CategorySerializer, CourseInstructorSerializer, CourseListSerializer
 
 # ========== Schema for CategoryListView ==========
 category_list_schema = extend_schema(
@@ -62,225 +61,214 @@ category_list_schema = extend_schema(
 )
 
 # ========== Schema for CourseInstructorViewSet ==========
-course_list_schema = extend_schema(
-    summary="List instructor's courses",
-    description="""
-    Retrieve all courses created by the currently authenticated instructor.
+course_instructor_schema_view = extend_schema_view(
+    list=extend_schema(
+        summary="List instructor's own courses",
+        description="Returns all courses where the current user is the instructor. "
+                    "No filtering, searching, or ordering is applied by default – "
+                    "you can implement them manually if needed.",
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                description="List of courses owned by the instructor",
+                response=CourseInstructorSerializer(many=True),
+            ),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="Authentication required"),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="User is not an instructor"),
+        },
+        tags=["Instructor Courses"],
+    ),
+    create=extend_schema(
+        summary="Create a new course (draft)",
+        description="""
+        Creates a course in `draft` status.  
+        - `instructor` is set automatically to the current user.  
+        - `status` is forced to `DR` (draft).  
+        - You can optionally provide nested `sections` and `lessons` in a single request.  
+        - Read‑only fields (`id`, `published_at`, `archived_at`, `price`, etc.) are ignored if sent.
 
-    **Permissions:**
-    - User must have `instructor` role
-    - Instructor must be verified (`is_verified` = True)
+        **Nested creation example** (see example below).
+        """,
+        request=CourseInstructorSerializer,
+        responses={
+            status.HTTP_201_CREATED: CourseInstructorSerializer,
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(description="Invalid data"),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="Authentication required"),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="User is not a verified instructor"),
+        },
+        tags=["Instructor Courses"],
+        examples=[
+            OpenApiExample(
+                "Create course with sections and lessons",
+                value={
+                    "title": "Django Advanced",
+                    "category": 5,
+                    "real_price": 780000,
+                    "discount": 20,
+                    "short_description": "Master Django",
+                    "sections": [
+                        {
+                            "title": "Introduction",
+                            "order": 0,
+                            "lessons": [
+                                {"title": "Setup", "order": 0, "video": None},
+                                {"title": "First steps", "order": 1}
+                            ]
+                        }
+                    ]
+                },
+                request_only=True,
+            )
+        ],
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve a single course",
+        description="Get full details of a course owned by the instructor.",
+        responses={
+            status.HTTP_200_OK: CourseInstructorSerializer,
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description="Course not found"),
+        },
+        tags=["Instructor Courses"],
+    ),
+    update=extend_schema(
+        summary="Fully update a course",
+        description="Replace all fields (PUT). Read‑only fields are ignored.",
+        request=CourseInstructorSerializer,
+        responses={
+            status.HTTP_200_OK: CourseInstructorSerializer,
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(description="Invalid data"),
+        },
+        tags=["Instructor Courses"],
+    ),
+    partial_update=extend_schema(
+        summary="Partially update a course",
+        description="Update specific fields (PATCH).",
+        request=CourseInstructorSerializer,
+        responses={
+            status.HTTP_200_OK: CourseInstructorSerializer,
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(description="Invalid data"),
+        },
+        tags=["Instructor Courses"],
+    ),
+    destroy=extend_schema(
+        summary="Delete a course",
+        description="Permanently delete a course and all its sections and lessons.",
+        responses={
+            status.HTTP_204_NO_CONTENT: OpenApiResponse(description="Course deleted"),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="Not allowed"),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description="Course not found"),
+        },
+        tags=["Instructor Courses"],
+    ),
+    submit_for_review=extend_schema(
+        summary="Submit draft course for admin review",
+        description="""
+        Changes the course status from `DR` (draft) to `PE` (pending) after validation.
 
-    **Returns only courses where:**
-    - `instructor` = currently authenticated user
+        **Validation rules:**
+        - Course must be in `draft` status.
+        - At least one section must exist.
+        - Each section must have at least one lesson.
+        - Each lesson must have a video file (not `None`).
 
-    **Course statuses:**
-    - `DR`: Draft (not published yet)
-    - `PU`: Published (visible to students)
-    - `AR`: Archived (hidden)
-    """,
-    responses={
-        status.HTTP_200_OK: OpenApiResponse(
-            description="List of courses retrieved successfully",
-            response=CourseInstructorSerializer(many=True),
-        ),
-        status.HTTP_401_UNAUTHORIZED: OpenApiResponse(
-            description="Authentication required"
-        ),
-        status.HTTP_403_FORBIDDEN: OpenApiResponse(
-            description="Access denied - User must be a verified instructor"
-        ),
-    },
-    tags=["Instructor Courses"],
+        If validation fails, a `400 Bad Request` is returned with a descriptive error message.
+        """,
+        request=None,
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                description="Successfully submitted",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "detail": {"type": "string", "example": "course successfully sended to admin."},
+                        "status": {"type": "string", "example": "PE"},
+                    }
+                }
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                description="Validation error (e.g., missing sections, lessons, or video)",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "detail": {"type": "string"},
+                    }
+                }
+            ),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="Authentication required"),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="User is not a verified instructor"),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description="Course not found"),
+        },
+        tags=["Instructor Courses"],
+        examples=[
+            OpenApiExample(
+                "Success response",
+                value={"detail": "course successfully sended to admin.", "status": "PE"},
+                response_only=True,
+            ),
+            OpenApiExample(
+                "Missing section error",
+                value={"detail": "course should have at least one section."},
+                response_only=True,
+            ),
+        ],
+    ),
 )
 
-course_create_schema = extend_schema(
-    summary="Create a new course",
+
+# ========== Schema for CourseListView (public) ==========
+course_list_schema = extend_schema(
+    summary="List published courses (public)",
     description="""
-    Create a new course as a verified instructor.
+    Returns all courses with `status = 'PU'` (published).  
+    Supports filtering, searching, and ordering as defined below.
 
-    **Required fields:**
-    - `title` (max 25 characters)
-    - `category`
-    - `real_price` (price in Toman)
+    **Filtering** (`?category=1&is_free=true`):
+    - `category`: Exact match by category ID.
+    - `is_free`: `true` or `false`.
 
-    **Optional fields:**
-    - `description`
-    - `thumbnail` (course cover image)
-    - `trailer` (introduction video)
-    - `short_description` (max 100 characters)
-    - `discount` (percentage, e.g., 20 for 20% off)
-    - `requirements` (prerequisites for students)
-    - `is_free` (if True, price will be 0)
+    **Search** (`?search=python`):
+    - Searches in `title`, `short_description`, and `description` (case‑insensitive partial match).
 
-    **Notes:**
-    - `price` is calculated automatically: `real_price * (100 - discount) // 100`
-    - New courses are created as `draft` by default
-    - Instructor must be verified before creating courses
+    **Ordering** (`?ordering=price` or `?ordering=-published_at`):
+    - `published_at` (ascending), `-published_at` (newest first).
+    - `price` (cheapest first), `-price` (most expensive first).
+
+    Additionally, the response includes an annotated `student_count` (number of enrolled students).
     """,
-    request=CourseInstructorSerializer,
-    responses={
-        status.HTTP_201_CREATED: OpenApiResponse(
-            description="Course created successfully",
-            response=CourseInstructorSerializer,
+    parameters=[
+        OpenApiParameter(
+            name="category",
+            type=int,
+            location='query',
+            description="Filter by category ID",
+            required=False,
         ),
-        status.HTTP_400_BAD_REQUEST: OpenApiResponse(
-            description="Invalid data provided",
-            response={
-                "type": "object",
-                "properties": {
-                    "title": {"type": "array", "items": {"type": "string"}},
-                    "category": {"type": "array", "items": {"type": "string"}},
-                }
-            }
+        OpenApiParameter(
+            name="is_free",
+            type=bool,
+            location='query',
+            description="Filter free (`true`) or paid (`false`) courses",
+            required=False,
         ),
-        status.HTTP_401_UNAUTHORIZED: OpenApiResponse(
-            description="Authentication required"
+        OpenApiParameter(
+            name="search",
+            type=str,
+            location='query',
+            description="Search in title, short description, or full description",
+            required=False,
         ),
-        status.HTTP_403_FORBIDDEN: OpenApiResponse(
-            description="Access denied - User must be a verified instructor"
-        ),
-    },
-    tags=["Instructor Courses"],
-    examples=[
-        OpenApiExample(
-            "Create paid course example",
-            value={
-                "title": "دوره مقدماتی پایتون",
-                "description": "در این دوره با مفاهیم پایه پایتون آشنا می‌شوید",
-                "short_description": "آموزش پایتون از صفر",
-                "category": 1,
-                "real_price": 500000,
-                "discount": 20,
-                "requirements": "آشنایی اولیه با کامپیوتر",
-                "is_free": False
-            },
-            request_only=True,
-        ),
-        OpenApiExample(
-            "Create free course example",
-            value={
-                "title": "آموزش رایگان Git",
-                "description": "آموزش کامل Git و GitHub",
-                "category": 1,
-                "is_free": True,
-                "real_price": 0
-            },
-            request_only=True,
+        OpenApiParameter(
+            name="ordering",
+            type=str,
+            location='query',
+            description="Order by `published_at` or `price`. Prefix with `-` for descending.",
+            required=False,
         ),
     ],
-)
-
-course_retrieve_schema = extend_schema(
-    summary="Get course details",
-    description="""
-    Retrieve detailed information about a specific course.
-
-    **Includes:**
-    - Basic course information
-    - Sections and lessons (through related fields)
-    - Instructor information
-    - Enrollment status (if student is authenticated)
-    """,
     responses={
         status.HTTP_200_OK: OpenApiResponse(
-            description="Course details retrieved successfully",
-            response=CourseInstructorSerializer,
-        ),
-        status.HTTP_404_NOT_FOUND: OpenApiResponse(
-            description="Course not found"
+            description="List of published courses with student count",
+            response=CourseListSerializer(many=True),
         ),
     },
-    tags=["Instructor Courses"],
-)
-
-course_update_schema = extend_schema(
-    summary="Update course (full update)",
-    description="""
-    Update all fields of an existing course (PUT method).
-
-    **Note:** 
-    - Only the instructor who created the course can update it
-    - Send all fields, even those you don't want to change
-    - Use PATCH for partial updates
-    """,
-    request=CourseInstructorSerializer,
-    responses={
-        status.HTTP_200_OK: OpenApiResponse(
-            description="Course updated successfully",
-            response=CourseInstructorSerializer,
-        ),
-        status.HTTP_400_BAD_REQUEST: OpenApiResponse(
-            description="Invalid data provided"
-        ),
-        status.HTTP_403_FORBIDDEN: OpenApiResponse(
-            description="You don't have permission to update this course"
-        ),
-        status.HTTP_404_NOT_FOUND: OpenApiResponse(
-            description="Course not found"
-        ),
-    },
-    tags=["Instructor Courses"],
-)
-
-course_partial_update_schema = extend_schema(
-    summary="Update course (partial update)",
-    description="""
-    Update specific fields of an existing course (PATCH method).
-
-    **Example use cases:**
-    - Change only the `status` from draft to published
-    - Update `discount` without changing other fields
-    - Modify `description` only
-    """,
-    request=CourseInstructorSerializer,
-    responses={
-        status.HTTP_200_OK: OpenApiResponse(
-            description="Course updated successfully",
-            response=CourseInstructorSerializer,
-        ),
-        status.HTTP_400_BAD_REQUEST: OpenApiResponse(
-            description="Invalid data provided"
-        ),
-        status.HTTP_403_FORBIDDEN: OpenApiResponse(
-            description="You don't have permission to update this course"
-        ),
-        status.HTTP_404_NOT_FOUND: OpenApiResponse(
-            description="Course not found"
-        ),
-    },
-    tags=["Instructor Courses"],
-)
-
-course_delete_schema = extend_schema(
-    summary="Delete course",
-    description="""
-    Delete a course permanently.
-
-    **Warning:** This action is irreversible. All sections, lessons, and enrollments related to this course will also be deleted (due to CASCADE).
-
-    **Recommendation:** Instead of deleting, consider archiving the course by setting `status` to `AR` (archived).
-    """,
-    responses={
-        status.HTTP_204_NO_CONTENT: OpenApiResponse(
-            description="Course deleted successfully"
-        ),
-        status.HTTP_403_FORBIDDEN: OpenApiResponse(
-            description="You don't have permission to delete this course"
-        ),
-        status.HTTP_404_NOT_FOUND: OpenApiResponse(
-            description="Course not found"
-        ),
-    },
-    tags=["Instructor Courses"],
-)
-
-# ========== Schema View for ViewSet ==========
-course_viewset_schema = extend_schema_view(
-    list=course_list_schema,
-    create=course_create_schema,
-    retrieve=course_retrieve_schema,
-    update=course_update_schema,
-    partial_update=course_partial_update_schema,
-    destroy=course_delete_schema,
+    tags=["Public Courses"],
 )

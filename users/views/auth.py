@@ -34,7 +34,6 @@ class SMSVerificationViewSet(VerificationViewSet):
         user, created = get_user_model().objects.get_or_create(
             phone_number=phone_number,
             role=role,
-            username=role.title() + '_' + ''.join(phone_number.as_national.split()),
         )
 
         # create token

@@ -61,6 +61,7 @@ class Course(models.Model):
     status = models.CharField(choices=STATUS_CHOICES, default='draft', max_length=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
     archived_at = models.DateTimeField(null=True, blank=True)
     is_free = models.BooleanField(default=False)

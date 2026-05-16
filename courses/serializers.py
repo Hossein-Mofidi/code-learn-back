@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from courses.models import Course, Category
+from courses.models import Course, Category, Lesson, Section
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -9,10 +9,36 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class LessonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lesson
+        fields = '__all__'
+
+
+class SectionSerializer(serializers.ModelSerializer):
+    lessons = LessonSerializer(many=True, required=False)
+
+    class Meta:
+        model = Section
+        fields = '__all__'
+
+
 class CourseInstructorSerializer(serializers.ModelSerializer):
+    sections = SectionSerializer(many=True, required=False)
+
     class Meta:
         model = Course
         fields = '__all__'
+        read_only_fields = [
+            'id',
+            'instructor',
+            'students',
+            'published_at',
+            'archived_at',
+            'status',
+            'discount',
+            'price',
+        ]
 
 
 class CourseListSerializer(serializers.ModelSerializer):
