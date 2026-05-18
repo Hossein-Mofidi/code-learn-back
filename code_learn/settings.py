@@ -38,7 +38,6 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 # Application definition
 
 INSTALLED_APPS = [
-    'django_daisy',
     'django.contrib.admin',
     'django.contrib.humanize',
     'django.contrib.auth',
@@ -201,28 +200,4 @@ SPECTACULAR_SETTINGS = {
     'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
     'REDOC_DIST': 'SIDECAR',
     'COMPONENT_SPLIT_REQUEST': True,
-}
-
-DAISY_SETTINGS = {
-    'SITE TITLE': 'Code Learn',
-    'SITE HEADER': 'Administrator',
-    'INDEX_TITLE': 'Hi, welcome to your dashboard',
-    'APPS_REORDER': {
-        'auth': {
-            'app': 'Authentication',
-            'icon': 'fa-solid fa-person-military-pointing',
-        },
-        'phone_verify': {
-            'app': 'SMS Verification',
-            'icon': 'fa-solid fa-phone',
-        },
-        'users': {
-            'app': 'Users',
-            'icon': 'fa-solid fa-user',
-        },
-        'token_blacklist': {
-            'app': 'TokenBlacklist',
-            'icon': 'fa-solid fa-list',
-        }
-    },
 }

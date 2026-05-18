@@ -44,6 +44,7 @@ class CourseInstructorSerializer(serializers.ModelSerializer):
 class CourseListSerializer(serializers.ModelSerializer):
     instructor = serializers.StringRelatedField(read_only=True)
     student_count = serializers.IntegerField(read_only=True)
+    category = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = Course
@@ -54,8 +55,8 @@ class CourseListSerializer(serializers.ModelSerializer):
             'short_description',
             'instructor',
             'student_count',
+            'category',
             'price',
-            'is_free'
         ]
 
 

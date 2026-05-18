@@ -77,8 +77,8 @@ class User(AbstractUser):
 
     @property
     def is_verified(self):
-        verify = InstructorVerification.objects.filter(user__id=self.id)
-        return verify.exists() and verify.last().status == 'approved'
+        verify = InstructorVerification.objects.filter(user=self)
+        return verify.exists() and verify.last().status == 'A'
 
     def __str__(self):
         return self.get_full_name() or str(self.phone_number)

@@ -43,11 +43,14 @@ class Course(models.Model):
         related_name='enrolled_courses',
         related_query_name='enrolled_course',
         limit_choices_to={'role': 'student'},
+        blank=True,
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
         related_name='courses',
+        null=True,
+        blank=True,
     )
 
     title = models.CharField(max_length=25)
@@ -56,19 +59,19 @@ class Course(models.Model):
     trailer = models.FileField(upload_to=course_field_path, null=True, blank=True)
     short_description = models.CharField(max_length=100, null=True, blank=True)
     real_price = models.PositiveIntegerField(help_text='price in toman', default=0)
-    discount = models.PositiveIntegerField(null=True, blank=True, help_text='percent of discount',)
+    price = models.PositiveIntegerField(default=0, db_index=True, help_text='final price after discount')
+    discount = models.PositiveIntegerField(default=0, help_text='percent of discount',)
     requirements = models.TextField(null=True, blank=True)
-    status = models.CharField(choices=STATUS_CHOICES, default='draft', max_length=2)
+    status = models.CharField(choices=STATUS_CHOICES, default='DR', max_length=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
     archived_at = models.DateTimeField(null=True, blank=True)
-    is_free = models.BooleanField(default=False)
 
-    @property
-    def price(self):
-        return self.real_price * (100 - self.discount) // 100
+    def save(self, *args, **kwargs):
+        self.price = self.real_price * (100 - self.discount) // 100
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
